@@ -110,10 +110,10 @@ function get_system(){
 #install necessary lib
 function yum_install(){
     if [ "$system_str" = "0" ]; then
-    yum -y update
+    #yum -y update
     yum -y install pam-devel openssl-devel make gcc curl
     else
-    apt-get -y update
+    #apt-get -y update
     apt-get -y install libpam0g-dev libssl-dev make gcc curl
     fi
 }
@@ -241,14 +241,16 @@ function setup_strongswan(){
 --enable-eap-mschapv2 --enable-eap-tls --enable-eap-ttls --enable-eap-peap  \
 --enable-eap-tnc --enable-eap-dynamic --enable-eap-radius --enable-xauth-eap  \
 --enable-xauth-pam  --enable-dhcp  --enable-openssl  --enable-addrblock --enable-unity  \
---enable-certexpire --enable-radattr --enable-swanctl --enable-openssl --disable-gmp
+--enable-certexpire --enable-radattr --enable-swanctl --enable-openssl --disable-gmp \
+--prefix=/usr/local/strongswan
 
     else
         ./configure  --enable-eap-identity --enable-eap-md5 \
 --enable-eap-mschapv2 --enable-eap-tls --enable-eap-ttls --enable-eap-peap  \
 --enable-eap-tnc --enable-eap-dynamic --enable-eap-radius --enable-xauth-eap  \
 --enable-xauth-pam  --enable-dhcp  --enable-openssl  --enable-addrblock --enable-unity  \
---enable-certexpire --enable-radattr --enable-swanctl --enable-openssl --disable-gmp --enable-kernel-libipsec
+--enable-certexpire --enable-radattr --enable-swanctl --enable-openssl --disable-gmp --enable-kernel-libipsec \
+--prefix=/usr/local/strongswan
 
     fi
     make; make install
@@ -276,11 +278,11 @@ function get_key(){
         stty echo
         stty $SAVEDSTTY
     }
-    cp -f ca.cert.pem /usr/local/etc/ipsec.d/cacerts/
-    cp -f server.cert.pem /usr/local/etc/ipsec.d/certs/
-    cp -f server.pem /usr/local/etc/ipsec.d/private/
-    cp -f client.cert.pem /usr/local/etc/ipsec.d/certs/
-    cp -f client.pem  /usr/local/etc/ipsec.d/private/
+    cp -f ca.cert.pem /usr/local/strongswan/etc/ipsec.d/cacerts/
+    cp -f server.cert.pem /usr/local/strongswan/etc/ipsec.d/certs/
+    cp -f server.pem /usr/local/strongswan/etc/ipsec.d/private/
+    cp -f client.cert.pem /usr/local/strongswan/etc/ipsec.d/certs/
+    cp -f client.pem  /usr/local/strongswan/etc/ipsec.d/private/
     echo "Cert copy completed"
 }
 
@@ -342,7 +344,7 @@ function create_cert(){
 
 # configure the ipsec.conf
 function configure_ipsec(){
- cat > /usr/local/etc/ipsec.conf<<-EOF
+ cat > /usr/local/strongswan/etc/ipsec.conf<<-EOF
 config setup
     uniqueids=never 
 
@@ -422,7 +424,7 @@ EOF
 
 # configure the strongswan.conf
 function configure_strongswan(){
- cat > /usr/local/etc/strongswan.conf<<-EOF
+ cat > /usr/local/strongswan/etc/strongswan.conf<<-EOF
  charon {
         load_modular = yes
         duplicheck.enable = no
@@ -441,7 +443,7 @@ EOF
 
 # configure the ipsec.secrets
 function configure_secrets(){
-    cat > /usr/local/etc/ipsec.secrets<<-EOF
+    cat > /usr/local/strongswan/etc/ipsec.secrets<<-EOF
 : RSA server.pem
 : PSK "myPSKkey"
 : XAUTH "myXAUTHPass"
@@ -512,8 +514,7 @@ function iptables_set(){
         iptables -A INPUT -i $interface -p udp --dport 500 -j ACCEPT
         iptables -A INPUT -i $interface -p tcp --dport 500 -j ACCEPT
         iptables -A INPUT -i $interface -p udp --dport 4500 -j ACCEPT
-        iptables -A INPUT -i $interface -p udp --dport 1701 -j ACCEPT
-        iptables -A INPUT -i $interface -p tcp --dport 1723 -j ACCEPT
+
         #iptables -A FORWARD -j REJECT
         if [ "$use_SNAT_str" = "1" ]; then
             iptables -t nat -A POSTROUTING -s 10.31.0.0/24 -o $interface -j SNAT --to-source $static_ip
@@ -537,8 +538,6 @@ function iptables_set(){
         iptables -A INPUT -i $interface -p udp --dport 500 -j ACCEPT
         iptables -A INPUT -i $interface -p tcp --dport 500 -j ACCEPT
         iptables -A INPUT -i $interface -p udp --dport 4500 -j ACCEPT
-        iptables -A INPUT -i $interface -p udp --dport 1701 -j ACCEPT
-        iptables -A INPUT -i $interface -p tcp --dport 1723 -j ACCEPT
         #iptables -A FORWARD -j REJECT
         if [ "$use_SNAT_str" = "1" ]; then
             iptables -t nat -A POSTROUTING -s 10.31.0.0/24 -o $interface -j SNAT --to-source $static_ip
